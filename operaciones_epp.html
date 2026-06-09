@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retiro EPP — Operaciones</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;
+  --border:rgba(0,0,0,.10);--border2:rgba(0,0,0,.18);
+  --text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
+  --blue:#185FA5;--blue-l:#E6F1FB;--blue-d:#0C447C;
+  --green:#3B6D11;--green-l:#EAF3DE;
+  --amber:#854F0B;--amber-l:#FAEEDA;
+  --red:#A32D2D;--red-l:#FCEBEB;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 1px 4px rgba(0,0,0,.07),0 0 0 .5px rgba(0,0,0,.08);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1c1c1a;--surface:#252523;--surface2:#2e2e2b;
+  --border:rgba(255,255,255,.10);--border2:rgba(255,255,255,.18);
+  --text:#f0efe9;--text2:#b4b2a9;--text3:#888780;
+  --blue:#378ADD;--blue-l:#042C53;--blue-d:#85B7EB;
+  --green:#97C459;--green-l:#173404;
+  --amber:#EF9F27;--amber-l:#412402;
+  --red:#F09595;--red-l:#501313;
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.app{max-width:640px;margin:0 auto;padding:24px 16px 56px}
+.header{text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:.5px solid var(--border)}
+.header .icon{width:48px;height:48px;background:var(--blue-l);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;color:var(--blue)}
+.header h1{font-size:20px;font-weight:600}
+.header p{font-size:13px;color:var(--text2);margin-top:4px}
+.sync-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--text3);margin-top:6px}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.sync-dot.off{background:var(--red)}
+.search-wrap{position:relative;margin-bottom:12px}
+.search-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3)}
+.search-wrap input{width:100%;padding:10px 12px 10px 38px;background:var(--surface);border:.5px solid var(--border2);border-radius:var(--radius);font-size:14px;color:var(--text);outline:none;transition:border-color .15s}
+.search-wrap input:focus{border-color:var(--blue)}
+.epp-list{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+.epp-card{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:14px 16px;display:flex;align-items:center;gap:14px;transition:background .1s}
+.epp-card:hover{background:var(--surface2)}
+.cat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.epp-info{flex:1;min-width:0}
+.epp-name{font-weight:500;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.epp-meta{font-size:12px;color:var(--text3);margin-top:2px}
+.epp-stock{text-align:right;flex-shrink:0}
+.stock-num{font-size:22px;font-weight:600;line-height:1}
+.stock-label{font-size:11px;color:var(--text3)}
+.badge-mini{display:inline-block;font-size:10px;font-weight:600;padding:1px 7px;border-radius:100px;margin-left:6px;vertical-align:middle}
+.badge-ok{background:var(--green-l);color:var(--green)}
+.badge-warn{background:var(--amber-l);color:var(--amber)}
+.badge-danger{background:var(--red-l);color:var(--red)}
+.btn-retirar{background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:8px 16px;font-size:13px;font-weight:500;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .15s}
+.btn-retirar:hover{background:var(--blue-d)}
+.btn-retirar:disabled{background:var(--text3);cursor:not-allowed}
+.empty-state{text-align:center;padding:40px 20px;color:var(--text3);font-size:14px}
+.warn-banner{background:var(--amber-l);border:.5px solid var(--amber);border-radius:var(--radius);padding:10px 14px;font-size:13px;color:var(--amber);margin-bottom:16px;display:none}
+.loading{text-align:center;padding:40px;color:var(--text3)}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius-lg);box-shadow:0 8px 32px rgba(0,0,0,.2);width:100%;max-width:400px}
+.modal-header{padding:18px 20px 0;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.modal-header h2{font-size:15px;font-weight:600;line-height:1.3}
+.close-btn{background:none;border:none;cursor:pointer;color:var(--text3);display:flex;border-radius:var(--radius);padding:3px;flex-shrink:0}
+.close-btn:hover{color:var(--text)}
+.modal-body{padding:16px 20px}
+.modal-stock-info{background:var(--surface2);border-radius:var(--radius);padding:10px 14px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.modal-stock-info .val{font-size:22px;font-weight:600}
+.form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.form-group label{font-size:12px;font-weight:500;color:var(--text2)}
+.form-group input,.form-group select{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--radius);padding:9px 11px;font-size:14px;color:var(--text);outline:none;transition:border-color .15s;font-family:inherit}
+.form-group input:focus,.form-group select:focus{border-color:var(--blue);background:var(--surface)}
+.qty-row{display:flex;align-items:center;gap:10px}
+.qty-btn{width:38px;height:38px;border-radius:var(--radius);border:.5px solid var(--border2);background:var(--surface);color:var(--text);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.qty-btn:hover{background:var(--surface2)}
+.qty-input{flex:1;text-align:center;font-size:22px;font-weight:600}
+.modal-footer{padding:0 20px 18px;display:flex;gap:8px;justify-content:flex-end}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:var(--radius);padding:8px 16px;font-size:13px;cursor:pointer;border:.5px solid var(--border2);background:var(--surface);color:var(--text)}
+.btn:hover{background:var(--surface2)}
+.btn-confirm{background:var(--blue);color:#fff;border:none;font-weight:500;font-size:14px;padding:9px 20px}
+.btn-confirm:hover{background:var(--blue-d)}
+.success-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center;padding:20px}
+.success-overlay.open{display:flex}
+.success-box{background:var(--surface);border-radius:var(--radius-lg);box-shadow:0 8px 32px rgba(0,0,0,.2);padding:32px 28px;max-width:360px;width:100%;text-align:center}
+.success-icon{width:56px;height:56px;background:var(--green-l);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--green)}
+.success-box h2{font-size:18px;font-weight:600;margin-bottom:8px}
+.success-box p{font-size:14px;color:var(--text2);margin-bottom:20px;line-height:1.6}
+.btn-ok{background:var(--blue);color:#fff;border:none;border-radius:var(--radius);padding:10px 28px;font-size:14px;font-weight:500;cursor:pointer;width:100%}
+.btn-ok:hover{background:var(--blue-d)}
+.cat-cabeza{background:#185FA5}.cat-ojos{background:#3B6D11}.cat-resp{background:#854F0B}
+.cat-manos{background:#A32D2D}.cat-pies{background:#533AB7}.cat-cuerpo{background:#1D9E75}
+.cat-caidas{background:#D85A30}.cat-auditivo{background:#888780}
+footer{text-align:center;padding:32px 0 0;font-size:11px;color:var(--text3)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
+    <h1>Retiro de EPP</h1>
+    <p>C.D. Noviciado · Operaciones</p>
+    <div class="sync-badge"><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Conectando…</span></div>
+  </div>
+  <div class="warn-banner" id="warn-banner"></div>
+  <div class="search-wrap">
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="search" placeholder="Buscar EPP…" oninput="renderLista()">
+  </div>
+  <div class="loading" id="loading">Cargando EPP disponibles…</div>
+  <div class="epp-list" id="epp-list"></div>
+  <div class="empty-state" id="empty" style="display:none">No se encontraron elementos.</div>
+</div>
+
+<div class="overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-nombre"></h2>
+      <button class="close-btn" onclick="closeModal()"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-stock-info">
+        <div><div style="font-size:12px;color:var(--text3)">Stock disponible</div><div class="val" id="modal-stock-val">0</div></div>
+        <div style="text-align:right"><div style="font-size:12px;color:var(--text3)">Stock mínimo</div><div style="font-weight:600;font-size:18px" id="modal-min-val">0</div></div>
+      </div>
+      <div class="form-group"><label>Cantidad a retirar</label>
+        <div class="qty-row">
+          <button class="qty-btn" onclick="ajustarQty(-1)">−</button>
+          <input class="qty-input" type="number" id="qty" min="1" value="1">
+          <button class="qty-btn" onclick="ajustarQty(1)">+</button>
+        </div>
+      </div>
+      <div class="form-group"><label>Nombre del responsable *</label><input type="text" id="responsable" placeholder="Tu nombre completo"></div>
+      <div class="form-group"><label>Área / Turno</label>
+        <select id="area"><option value="">Seleccionar…</option><option>Despacho</option><option>Recepción</option><option>Almacén</option><option>Administración</option><option>Otro</option></select>
+      </div>
+      <div class="form-group"><label>Observación (opcional)</label><input type="text" id="obs-retiro" placeholder="Ej: Turno noche, andén 3…"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-confirm" onclick="confirmarRetiro()">Confirmar retiro</button>
+    </div>
+  </div>
+</div>
+
+<div class="success-overlay" id="success-overlay">
+  <div class="success-box">
+    <div class="success-icon"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+    <h2>Retiro registrado</h2>
+    <p id="success-msg"></p>
+    <button class="btn-ok" onclick="closeSuccess()">Listo</button>
+  </div>
+</div>
+
+<footer>Uso exclusivo Operaciones · Datos sincronizados en tiempo real</footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
+import { getDatabase, ref, onValue, update, push } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDslFUdRtdFoLu9EgY1kRjW0K-JdDYQBmo",
+  authDomain: "epp-noviciado.firebaseapp.com",
+  databaseURL: "https://epp-noviciado-default-rtdb.firebaseio.com",
+  projectId: "epp-noviciado",
+  storageBucket: "epp-noviciado.firebasestorage.app",
+  messagingSenderId: "347815927943",
+  appId: "1:347815927943:web:97a1a1c761d47a06a21822"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let inventario = {};
+let activeKey = null;
+
+const CAT_COLORS = {'Cabeza':'cat-cabeza','Ojos y cara':'cat-ojos','Respiratorio':'cat-resp','Manos':'cat-manos','Pies':'cat-pies','Cuerpo':'cat-cuerpo','Caídas':'cat-caidas','Auditivo':'cat-auditivo'};
+
+onValue(ref(db,'inventario'), snap => {
+  document.getElementById('loading').style.display='none';
+  inventario = snap.val() || {};
+  renderLista();
+  checkBanner();
+  document.getElementById('sync-dot').className='sync-dot';
+  document.getElementById('sync-label').textContent='Conectado · tiempo real';
+}, () => {
+  document.getElementById('sync-dot').className='sync-dot off';
+  document.getElementById('sync-label').textContent='Sin conexión';
+});
+
+function estadoItem(item){
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  if(item.venc){const v=new Date(item.venc+'T12:00:00');const d=(v-hoy)/86400000;if(d<0)return'danger';if(d<=60)return'warn';}
+  if(item.stock===0)return'danger';if(item.stock<item.min)return'warn';return'ok';
+}
+
+function checkBanner(){
+  const alertas=Object.values(inventario).filter(i=>estadoItem(i)!=='ok');
+  const b=document.getElementById('warn-banner');
+  if(alertas.length){b.style.display='block';b.textContent=`⚠ ${alertas.length} EPP con stock bajo o vencido. Consulta con el encargado de prevención.`;}
+  else b.style.display='none';
+}
+
+window.renderLista = () => {
+  const q=document.getElementById('search').value.toLowerCase();
+  let data=Object.entries(inventario).map(([k,v])=>({...v,_k:k}));
+  if(q) data=data.filter(d=>d.nombre.toLowerCase().includes(q)||(d.cat||'').toLowerCase().includes(q));
+  const list=document.getElementById('epp-list');
+  const empty=document.getElementById('empty');
+  if(!data.length){list.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  list.innerHTML=data.map(item=>{
+    const st=estadoItem(item);
+    const bMap={ok:'badge-ok',warn:'badge-warn',danger:'badge-danger'};
+    const lMap={ok:'OK',warn:'Stock bajo',danger:'Sin stock'};
+    const dis=item.stock===0?'disabled':'';
+    const cc=CAT_COLORS[item.cat]||'cat-auditivo';
+    const sc=st==='danger'?'color:var(--red)':st==='warn'?'color:var(--amber)':'color:var(--text)';
+    return`<div class="epp-card">
+      <div class="cat-dot ${cc}"></div>
+      <div class="epp-info">
+        <div class="epp-name">${item.nombre}<span class="badge-mini ${bMap[st]}">${lMap[st]}</span></div>
+        <div class="epp-meta">${item.cat||''}${item.norma?' · '+item.norma:''}</div>
+      </div>
+      <div class="epp-stock"><div class="stock-num" style="${sc}">${item.stock}</div><div class="stock-label">disponible</div></div>
+      <button class="btn-retirar" onclick="abrirModal('${item._k}')" ${dis}>Retirar</button>
+    </div>`;
+  }).join('');
+};
+
+window.abrirModal = (k) => {
+  activeKey=k;
+  const item=inventario[k];
+  document.getElementById('modal-nombre').textContent=item.nombre;
+  document.getElementById('modal-stock-val').textContent=item.stock;
+  document.getElementById('modal-min-val').textContent=item.min;
+  document.getElementById('qty').value=1;
+  document.getElementById('qty').max=item.stock;
+  document.getElementById('responsable').value='';
+  document.getElementById('area').value='';
+  document.getElementById('obs-retiro').value='';
+  document.getElementById('modal').classList.add('open');
+  setTimeout(()=>document.getElementById('responsable').focus(),50);
+};
+window.closeModal = () => { document.getElementById('modal').classList.remove('open'); activeKey=null; };
+window.ajustarQty = (d) => {
+  const input=document.getElementById('qty');
+  const max=inventario[activeKey]?.stock||1;
+  input.value=Math.max(1,Math.min(max,(parseInt(input.value)||1)+d));
+};
+window.confirmarRetiro = async () => {
+  if(!activeKey)return;
+  const cantidad=parseInt(document.getElementById('qty').value)||0;
+  const responsable=document.getElementById('responsable').value.trim();
+  const area=document.getElementById('area').value;
+  const obs=document.getElementById('obs-retiro').value.trim();
+  if(!responsable){alert('El nombre del responsable es obligatorio.');return;}
+  if(cantidad<1){alert('La cantidad debe ser al menos 1.');return;}
+  const item=inventario[activeKey];
+  if(cantidad>item.stock){alert(`Solo hay ${item.stock} unidades disponibles.`);return;}
+  const nuevoStock=item.stock-cantidad;
+  await update(ref(db,`inventario/${activeKey}`),{stock:nuevoStock});
+  await push(ref(db,'retiros'),{fecha:new Date().toLocaleString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}),epp:item.nombre,cantidad,responsable,area,obs,ts:Date.now()});
+  closeModal();
+  document.getElementById('success-msg').textContent=`${responsable} retiró ${cantidad} unidad${cantidad>1?'es':''} de "${item.nombre}". Stock restante: ${nuevoStock}.`;
+  document.getElementById('success-overlay').classList.add('open');
+};
+window.closeSuccess = () => { document.getElementById('success-overlay').classList.remove('open'); };
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+</script>
+</body>
+</html>

@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin EPP — C.D. Noviciado</title>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;
+  --border:rgba(0,0,0,.10);--border2:rgba(0,0,0,.18);
+  --text:#1a1a18;--text2:#5f5e5a;--text3:#888780;
+  --blue:#185FA5;--blue-l:#E6F1FB;--blue-d:#0C447C;
+  --green:#3B6D11;--green-l:#EAF3DE;
+  --amber:#854F0B;--amber-l:#FAEEDA;
+  --red:#A32D2D;--red-l:#FCEBEB;
+  --radius:8px;--radius-lg:12px;
+  --shadow:0 1px 4px rgba(0,0,0,.07),0 0 0 .5px rgba(0,0,0,.08);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#1c1c1a;--surface:#252523;--surface2:#2e2e2b;
+  --border:rgba(255,255,255,.10);--border2:rgba(255,255,255,.18);
+  --text:#f0efe9;--text2:#b4b2a9;--text3:#888780;
+  --blue:#378ADD;--blue-l:#042C53;--blue-d:#85B7EB;
+  --green:#97C459;--green-l:#173404;
+  --amber:#EF9F27;--amber-l:#412402;
+  --red:#F09595;--red-l:#501313;
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+.app{max-width:1200px;margin:0 auto;padding:24px 20px 56px}
+.header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.header h1{font-size:20px;font-weight:600;letter-spacing:-.3px}
+.header p{font-size:12px;color:var(--text2);margin-top:3px}
+.header-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:.5px solid var(--border)}
+.tab{padding:9px 18px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:2px solid transparent;transition:color .15s;border-radius:var(--radius) var(--radius) 0 0}
+.tab:hover{color:var(--text)}.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.panel{display:none}.panel.active{display:block}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:20px}
+.metric{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px}
+.metric-label{font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.metric-value{font-size:26px;font-weight:600;letter-spacing:-1px;line-height:1}
+.metric-value.ok{color:var(--green)}.metric-value.warn{color:var(--amber)}.metric-value.danger{color:var(--red)}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.search-wrap{position:relative;flex:1;min-width:180px;max-width:280px}
+.search-wrap svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
+.search-wrap input{width:100%;padding-left:32px}
+.toolbar input,.toolbar select{background:var(--surface);border:.5px solid var(--border2);border-radius:var(--radius);padding:7px 12px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s}
+.toolbar input:focus,.toolbar select:focus{border-color:var(--blue)}
+.toolbar select{min-width:160px;cursor:pointer}
+.spacer{flex:1}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:var(--radius);padding:7px 14px;font-size:13px;cursor:pointer;transition:background .15s;border:.5px solid var(--border2);background:var(--surface);color:var(--text)}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--blue);color:#fff;border:none;font-weight:500}
+.btn-primary:hover{background:var(--blue-d)}
+.table-card{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:860px}
+thead th{background:var(--surface2);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:10px 14px;text-align:left;border-bottom:.5px solid var(--border);white-space:nowrap}
+tbody tr{border-bottom:.5px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+tbody td{padding:10px 14px;vertical-align:middle}
+.cell-nombre strong{font-weight:500;font-size:13px;display:block}
+.cell-nombre span{font-size:11px;color:var(--text3)}
+.badge{display:inline-block;font-size:11px;font-weight:500;padding:2px 9px;border-radius:100px;white-space:nowrap}
+.badge-cat{background:var(--surface2);color:var(--text2);border:.5px solid var(--border)}
+.badge-ok{background:var(--green-l);color:var(--green)}
+.badge-warn{background:var(--amber-l);color:var(--amber)}
+.badge-danger{background:var(--red-l);color:var(--red)}
+.actions{display:flex;gap:4px}
+.icon-btn{background:none;border:none;border-radius:var(--radius);padding:5px 7px;cursor:pointer;color:var(--text3);transition:color .1s,background .1s;display:inline-flex;align-items:center}
+.icon-btn:hover{background:var(--surface2);color:var(--text)}
+.icon-btn.del:hover{color:var(--red)}
+.table-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:.5px solid var(--border);font-size:12px;color:var(--text3)}
+.empty-state{padding:48px 20px;text-align:center;color:var(--text3)}
+.log-table{width:100%;border-collapse:collapse;font-size:13px}
+.log-table thead th{background:var(--surface2);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);padding:9px 14px;text-align:left;border-bottom:.5px solid var(--border)}
+.log-table tbody tr{border-bottom:.5px solid var(--border)}
+.log-table tbody tr:last-child{border-bottom:none}
+.log-table tbody td{padding:9px 14px;vertical-align:middle}
+.settings-card{background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow);padding:24px;max-width:560px}
+.settings-card h2{font-size:16px;font-weight:600;margin-bottom:4px}
+.settings-card p{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6}
+.form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.form-group label{font-size:12px;font-weight:500;color:var(--text2)}
+.form-group input,.form-group select{background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--radius);padding:9px 11px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;font-family:inherit}
+.form-group input:focus{border-color:var(--blue);background:var(--surface)}
+.form-group .hint{font-size:11px;color:var(--text3)}
+.cfg-status{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:6px 12px;border-radius:100px;margin-top:8px}
+.cfg-status.ok{background:var(--green-l);color:var(--green)}
+.cfg-status.err{background:var(--red-l);color:var(--red)}
+.divider{border:none;border-top:.5px solid var(--border);margin:20px 0}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;padding:20px}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius-lg);box-shadow:0 8px 32px rgba(0,0,0,.18);width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 0}
+.modal-header h2{font-size:15px;font-weight:600}
+.close-btn{background:none;border:none;cursor:pointer;color:var(--text3);border-radius:var(--radius);padding:4px;display:flex}
+.close-btn:hover{color:var(--text)}
+.modal-body{padding:16px 20px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid .form-group{margin-bottom:0}
+.form-grid .full{grid-column:1/-1}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;padding:0 20px 18px;margin-top:4px}
+.confirm-box{background:var(--surface);border-radius:var(--radius-lg);box-shadow:0 8px 32px rgba(0,0,0,.18);padding:24px;max-width:360px;width:100%}
+.confirm-box p{font-size:14px;margin-bottom:16px}
+.confirm-actions{display:flex;gap:8px;justify-content:flex-end}
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--surface);border-radius:var(--radius);box-shadow:0 4px 16px rgba(0,0,0,.15);padding:12px 16px;font-size:13px;max-width:320px;display:flex;align-items:flex-start;gap:10px;animation:slideIn .2s ease;border-left:3px solid transparent}
+.toast.ok{border-left-color:var(--green)}.toast.warn{border-left-color:var(--amber)}.toast.danger{border-left-color:var(--red)}.toast.info{border-left-color:var(--blue)}
+.toast-title{font-weight:500}.toast-msg{font-size:12px;color:var(--text2);margin-top:2px}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:4px}
+.sync-dot.offline{background:var(--red)}
+@keyframes slideIn{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}
+.loading{text-align:center;padding:40px;color:var(--text3)}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <h1>
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px;color:var(--blue)"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Admin EPP — C.D. Noviciado
+      </h1>
+      <p><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Conectando…</span> · Ley 16.744 &amp; DS 594</p>
+    </div>
+    <div class="header-actions">
+      <span id="badge-alerta" style="display:none;background:var(--red-l);color:var(--red);font-size:11px;font-weight:600;padding:4px 10px;border-radius:100px;border:.5px solid var(--red)"></span>
+      <button class="btn" onclick="exportarCSV()">CSV</button>
+      <button class="btn" onclick="window.print()">Imprimir</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('inventario',this)">Inventario</button>
+    <button class="tab" onclick="showTab('log',this)">Registro de retiros</button>
+    <button class="tab" onclick="showTab('config',this)">Configuración</button>
+  </div>
+
+  <div class="panel active" id="panel-inventario">
+    <div class="metrics" id="metrics"></div>
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search" placeholder="Buscar EPP…" oninput="renderTabla()">
+      </div>
+      <select id="filterCat" onchange="renderTabla()">
+        <option value="">Todas las categorías</option>
+        <option>Cabeza</option><option>Ojos y cara</option><option>Respiratorio</option>
+        <option>Manos</option><option>Pies</option><option>Cuerpo</option>
+        <option>Caídas</option><option>Auditivo</option>
+      </select>
+      <select id="filterEstado" onchange="renderTabla()">
+        <option value="">Todos los estados</option>
+        <option value="ok">Stock OK</option>
+        <option value="warn">Stock bajo</option>
+        <option value="danger">Sin stock</option>
+        <option value="vencido">Por vencer / vencido</option>
+      </select>
+      <div class="spacer"></div>
+      <button class="btn btn-primary" onclick="openModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Agregar EPP
+      </button>
+    </div>
+    <div class="table-card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Elemento / Norma</th><th>Categoría</th><th>Stock</th>
+            <th>Mínimo</th><th>Asignados</th><th>Vencimiento</th>
+            <th>Proveedor</th><th>Estado</th><th>Acciones</th>
+          </tr></thead>
+          <tbody id="tabla-body"></tbody>
+        </table>
+        <div class="empty-state" id="empty" style="display:none"><p>No se encontraron registros.</p></div>
+        <div class="loading" id="loading">Cargando inventario…</div>
+      </div>
+      <div class="table-footer">
+        <span id="footer-count"></span>
+        <span>Sincronizado con Firebase en tiempo real</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-log">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <p style="font-size:13px;color:var(--text2)">Historial de retiros registrados por operaciones.</p>
+      <button class="btn" style="color:var(--red);border-color:var(--red)" onclick="limpiarLog()">Limpiar historial</button>
+    </div>
+    <div class="table-card">
+      <div class="table-wrap">
+        <table class="log-table">
+          <thead><tr><th>Fecha y hora</th><th>EPP</th><th>Cantidad</th><th>Responsable</th><th>Área</th><th>Observación</th></tr></thead>
+          <tbody id="log-body"></tbody>
+        </table>
+        <div class="empty-state" id="log-empty" style="display:none"><p>Sin retiros registrados aún.</p></div>
+        <div class="loading" id="log-loading">Cargando historial…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-config">
+    <div class="settings-card">
+      <h2>Notificaciones por correo</h2>
+      <p>Alertas automáticas a tu Gmail cuando un EPP baja del stock mínimo. Usa EmailJS (ya configurado).</p>
+      <div class="form-group"><label>Service ID (EmailJS)</label><input type="text" id="cfg-service" placeholder="service_xxxxxxx"><span class="hint">Desde Email Services en emailjs.com</span></div>
+      <div class="form-group"><label>Template ID (EmailJS)</label><input type="text" id="cfg-template" placeholder="template_xxxxxxx"><span class="hint">Desde Email Templates en emailjs.com</span></div>
+      <div class="form-group"><label>Public Key (EmailJS)</label><input type="text" id="cfg-pubkey" placeholder="XXXXXXXXXXXXXXXXXXXX"></div>
+      <div class="form-group"><label>Tu correo Gmail (destinatario)</label><input type="email" id="cfg-email" placeholder="nombre@gmail.com"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn btn-primary" onclick="guardarConfig()">Guardar configuración</button>
+        <button class="btn" onclick="probarCorreo()">Enviar correo de prueba</button>
+        <span id="cfg-status" class="cfg-status" style="display:none"></span>
+      </div>
+      <hr class="divider">
+      <h2 style="margin-bottom:8px">Envío manual</h2>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Envía el resumen de alertas actuales en cualquier momento.</p>
+      <button class="btn" onclick="enviarResumen()">Enviar resumen de alertas ahora</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal EPP -->
+<div class="overlay" id="modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modal-title">Agregar EPP</h2>
+      <button class="close-btn" onclick="closeModal()"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full"><label>Nombre del elemento *</label><input type="text" id="f-nombre" placeholder="Ej: Casco de seguridad clase B"></div>
+        <div class="form-group"><label>Categoría *</label>
+          <select id="f-cat"><option>Cabeza</option><option>Ojos y cara</option><option>Respiratorio</option><option>Manos</option><option>Pies</option><option>Cuerpo</option><option>Caídas</option><option>Auditivo</option></select>
+        </div>
+        <div class="form-group"><label>Norma / Certificación</label><input type="text" id="f-norma" placeholder="NCh461, ANSI Z87.1…"></div>
+        <div class="form-group"><label>Stock actual *</label><input type="number" id="f-stock" min="0" value="0"></div>
+        <div class="form-group"><label>Stock mínimo *</label><input type="number" id="f-min" min="0" value="5"></div>
+        <div class="form-group"><label>Unidades asignadas</label><input type="number" id="f-asig" min="0" value="0"></div>
+        <div class="form-group"><label>Fecha de vencimiento</label><input type="date" id="f-venc"></div>
+        <div class="form-group"><label>Proveedor</label><input type="text" id="f-prov" placeholder="Nombre proveedor"></div>
+        <div class="form-group full"><label>Observaciones</label><input type="text" id="f-obs" placeholder="Notas, estado, acciones pendientes…"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardar()">Guardar registro</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm -->
+<div class="overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <p id="confirm-msg"></p>
+    <div class="confirm-actions">
+      <button class="btn" onclick="closeConfirm()">Cancelar</button>
+      <button class="btn" style="background:var(--red);color:#fff;border:none;font-weight:500" onclick="confirmarEliminar()">Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toasts"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, push, remove, update } from "https://www.gstatic.com/firebasejs/11.9.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDslFUdRtdFoLu9EgY1kRjW0K-JdDYQBmo",
+  authDomain: "epp-noviciado.firebaseapp.com",
+  databaseURL: "https://epp-noviciado-default-rtdb.firebaseio.com",
+  projectId: "epp-noviciado",
+  storageBucket: "epp-noviciado.firebasestorage.app",
+  messagingSenderId: "347815927943",
+  appId: "1:347815927943:web:97a1a1c761d47a06a21822"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let inventario = {};
+let logData = {};
+let editKey = null;
+let deleteKey = null;
+let alertasEnviadas = new Set();
+let cfg = { serviceId:'', templateId:'', publicKey:'', email:'' };
+
+// Cargar config local
+try { cfg = {...cfg, ...JSON.parse(localStorage.getItem('epp_cfg_v1'))}; } catch {}
+cargarCfgUI();
+if (cfg.publicKey) emailjs.init(cfg.publicKey);
+
+// Firebase listeners
+const invRef = ref(db, 'inventario');
+onValue(invRef, snap => {
+  document.getElementById('loading').style.display = 'none';
+  inventario = snap.val() || {};
+  renderMetrics();
+  renderTabla();
+  verificarAlertas();
+  setSyncOk();
+}, err => { setSyncErr(); toast('Error de conexión', err.message, 'danger'); });
+
+const logRef = ref(db, 'retiros');
+onValue(logRef, snap => {
+  document.getElementById('log-loading').style.display = 'none';
+  logData = snap.val() || {};
+  renderLog();
+});
+
+function setSyncOk() {
+  document.getElementById('sync-dot').className = 'sync-dot';
+  document.getElementById('sync-label').textContent = 'Conectado · tiempo real';
+}
+function setSyncErr() {
+  document.getElementById('sync-dot').className = 'sync-dot offline';
+  document.getElementById('sync-label').textContent = 'Sin conexión';
+}
+
+// HELPERS
+function estadoItem(item) {
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  if (item.venc) { const v = new Date(item.venc+'T12:00:00'); const d=(v-hoy)/86400000; if(d<0)return'danger'; if(d<=60)return'warn'; }
+  if (item.stock===0) return 'danger';
+  if (item.stock<item.min) return 'warn';
+  return 'ok';
+}
+function badgeInfo(item) {
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  if (item.venc) { const v=new Date(item.venc+'T12:00:00'); const d=Math.round((v-hoy)/86400000); if(d<0)return['danger','Vencido']; if(d<=60)return['warn',`Vence en ${d}d`]; }
+  if (item.stock===0) return ['danger','Sin stock'];
+  if (item.stock<item.min) return ['warn','Stock bajo'];
+  return ['ok','Stock OK'];
+}
+
+// TABS
+window.showTab = (id, btn) => {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  btn.classList.add('active');
+};
+
+// METRICS
+function renderMetrics() {
+  const items = Object.values(inventario);
+  const total=items.length, sinStock=items.filter(i=>i.stock===0).length;
+  const bajos=items.filter(i=>i.stock>0&&i.stock<i.min).length;
+  const venc=items.filter(i=>{if(!i.venc)return false;return(new Date(i.venc+'T12:00:00')-new Date())/86400000<=60;}).length;
+  const ok=items.filter(i=>estadoItem(i)==='ok').length;
+  const asig=items.reduce((s,i)=>s+(i.asig||0),0);
+  const alerta=sinStock+bajos;
+  document.getElementById('badge-alerta').style.display=alerta>0?'':'none';
+  document.getElementById('badge-alerta').textContent=`⚠ ${alerta} alerta${alerta>1?'s':''}`;
+  document.getElementById('metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">Tipos EPP</div><div class="metric-value">${total}</div><div class="metric-sub">registros</div></div>
+    <div class="metric"><div class="metric-label">Stock OK</div><div class="metric-value ok">${ok}</div><div class="metric-sub">elementos</div></div>
+    <div class="metric"><div class="metric-label">Stock bajo</div><div class="metric-value ${bajos>0?'warn':''}">${bajos}</div><div class="metric-sub">bajo mínimo</div></div>
+    <div class="metric"><div class="metric-label">Sin stock</div><div class="metric-value ${sinStock>0?'danger':''}">${sinStock}</div><div class="metric-sub">crítico</div></div>
+    <div class="metric"><div class="metric-label">Por vencer</div><div class="metric-value ${venc>0?'warn':''}">${venc}</div><div class="metric-sub">en ≤60 días</div></div>
+    <div class="metric"><div class="metric-label">Asignados</div><div class="metric-value">${asig}</div><div class="metric-sub">unidades</div></div>`;
+}
+
+// TABLA
+function renderTabla() {
+  const q=document.getElementById('search').value.toLowerCase();
+  const fc=document.getElementById('filterCat').value;
+  const fe=document.getElementById('filterEstado').value;
+  let data=Object.entries(inventario).map(([k,v])=>({...v,_k:k}));
+  if(q) data=data.filter(d=>d.nombre.toLowerCase().includes(q)||(d.cat||'').toLowerCase().includes(q)||(d.prov||'').toLowerCase().includes(q));
+  if(fc) data=data.filter(d=>d.cat===fc);
+  if(fe==='ok') data=data.filter(d=>estadoItem(d)==='ok');
+  else if(fe==='warn') data=data.filter(d=>estadoItem(d)==='warn'&&d.stock>0);
+  else if(fe==='danger') data=data.filter(d=>estadoItem(d)==='danger');
+  else if(fe==='vencido') data=data.filter(d=>{if(!d.venc)return false;return(new Date(d.venc+'T12:00:00')-new Date())/86400000<=60;});
+  const tbody=document.getElementById('tabla-body');
+  const empty=document.getElementById('empty');
+  document.getElementById('footer-count').textContent=`${data.length} de ${Object.keys(inventario).length} registros`;
+  if(!data.length){tbody.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  tbody.innerHTML=data.map(item=>{
+    const[bClass,bLabel]=badgeInfo(item);
+    const st=estadoItem(item);
+    const vStr=item.venc?new Date(item.venc+'T12:00:00').toLocaleDateString('es-CL'):'—';
+    const sc=st==='danger'?'color:var(--red)':st==='warn'?'color:var(--amber)':'';
+    return`<tr>
+      <td class="cell-nombre"><strong>${item.nombre}</strong>${item.norma?`<span>${item.norma}</span>`:''}</td>
+      <td><span class="badge badge-cat">${item.cat}</span></td>
+      <td><span style="font-weight:600;${sc}">${item.stock}</span></td>
+      <td style="color:var(--text3)">${item.min}</td><td>${item.asig||0}</td>
+      <td style="font-size:12px">${vStr}</td>
+      <td style="font-size:12px;color:var(--text2)">${item.prov||'—'}</td>
+      <td><span class="badge badge-${bClass}">${bLabel}</span></td>
+      <td><div class="actions">
+        <button class="icon-btn" onclick="editarItem('${item._k}')" title="Editar"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        <button class="icon-btn del" onclick="pedirEliminar('${item._k}')" title="Eliminar"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+window.editarItem = editarItem;
+window.pedirEliminar = pedirEliminar;
+
+// LOG
+function renderLog() {
+  const tbody=document.getElementById('log-body');
+  const empty=document.getElementById('log-empty');
+  const entries=Object.values(logData).sort((a,b)=>b.ts-a.ts);
+  if(!entries.length){tbody.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  tbody.innerHTML=entries.map(r=>`<tr>
+    <td style="font-size:12px;white-space:nowrap">${r.fecha}</td>
+    <td>${r.epp}</td>
+    <td style="font-weight:600;color:var(--red)">-${r.cantidad}</td>
+    <td>${r.responsable||'—'}</td>
+    <td style="font-size:12px">${r.area||'—'}</td>
+    <td style="color:var(--text2);font-size:12px">${r.obs||'—'}</td>
+  </tr>`).join('');
+}
+window.limpiarLog = async () => {
+  if(!confirm('¿Eliminar todo el historial de retiros?'))return;
+  await set(ref(db,'retiros'), null);
+  toast('Historial eliminado','','info');
+};
+
+// CRUD
+window.openModal = (key=null) => {
+  editKey=key;
+  const item=key?inventario[key]:null;
+  document.getElementById('modal-title').textContent=key?'Editar EPP':'Agregar EPP';
+  document.getElementById('f-nombre').value=item?.nombre||'';
+  document.getElementById('f-cat').value=item?.cat||'Cabeza';
+  document.getElementById('f-norma').value=item?.norma||'';
+  document.getElementById('f-stock').value=item?.stock??0;
+  document.getElementById('f-min').value=item?.min??5;
+  document.getElementById('f-asig').value=item?.asig??0;
+  document.getElementById('f-venc').value=item?.venc||'';
+  document.getElementById('f-prov').value=item?.prov||'';
+  document.getElementById('f-obs').value=item?.obs||'';
+  document.getElementById('modal').classList.add('open');
+  setTimeout(()=>document.getElementById('f-nombre').focus(),50);
+};
+window.closeModal = () => { document.getElementById('modal').classList.remove('open'); editKey=null; };
+window.guardar = async () => {
+  const nombre=document.getElementById('f-nombre').value.trim();
+  if(!nombre){alert('El nombre es obligatorio.');return;}
+  const item={nombre,cat:document.getElementById('f-cat').value,norma:document.getElementById('f-norma').value.trim(),stock:parseInt(document.getElementById('f-stock').value)||0,min:parseInt(document.getElementById('f-min').value)||0,asig:parseInt(document.getElementById('f-asig').value)||0,venc:document.getElementById('f-venc').value,prov:document.getElementById('f-prov').value.trim(),obs:document.getElementById('f-obs').value.trim()};
+  if(editKey) await update(ref(db,`inventario/${editKey}`),item);
+  else await push(ref(db,'inventario'),item);
+  closeModal(); toast('Registro guardado',item.nombre,'ok');
+};
+function editarItem(k) { openModal(k); }
+function pedirEliminar(k) {
+  deleteKey=k;
+  document.getElementById('confirm-msg').textContent=`¿Eliminar "${inventario[k]?.nombre}"? Esta acción no se puede deshacer.`;
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+window.closeConfirm = () => { document.getElementById('confirm-overlay').classList.remove('open'); deleteKey=null; };
+window.confirmarEliminar = async () => {
+  if(!deleteKey)return;
+  await remove(ref(db,`inventario/${deleteKey}`));
+  closeConfirm(); toast('Registro eliminado','','info');
+};
+
+// ALERTAS
+function verificarAlertas() {
+  const alertas=Object.values(inventario).filter(i=>estadoItem(i)!=='ok');
+  const nuevas=alertas.filter(i=>!alertasEnviadas.has(i.nombre));
+  if(nuevas.length&&cfg.serviceId&&cfg.templateId&&cfg.publicKey&&cfg.email){
+    nuevas.forEach(i=>alertasEnviadas.add(i.nombre));
+    enviarAlerta(nuevas);
+  }
+}
+function buildLista(items){return items.map(i=>{const[,l]=badgeInfo(i);return`• ${i.nombre} | Stock: ${i.stock} / Mínimo: ${i.min} | Estado: ${l}`;}).join('\n');}
+function enviarAlerta(items){
+  emailjs.send(cfg.serviceId,cfg.templateId,{epp_lista:buildLista(items),fecha:new Date().toLocaleString('es-CL'),centro:'C.D. Noviciado',to_email:cfg.email,asunto:`⚠ Alerta EPP — ${items.length} elemento(s) bajo stock mínimo`})
+    .then(()=>toast('Alerta enviada',`Correo enviado a ${cfg.email}`,'warn'))
+    .catch(()=>toast('Error al enviar correo','Revisa configuración EmailJS','danger'));
+}
+window.enviarResumen = () => {
+  if(!cfg.serviceId||!cfg.email){toast('Sin configuración','Completa los datos en Configuración.','danger');return;}
+  const alertas=Object.values(inventario).filter(i=>estadoItem(i)!=='ok');
+  if(!alertas.length){toast('Sin alertas','Todos los EPP están sobre el mínimo.','ok');return;}
+  enviarAlerta(alertas);
+};
+window.probarCorreo = () => {
+  if(!cfg.serviceId||!cfg.templateId||!cfg.publicKey||!cfg.email){toast('Faltan datos','Completa todos los campos primero.','danger');return;}
+  emailjs.send(cfg.serviceId,cfg.templateId,{epp_lista:'• Este es un correo de prueba.',fecha:new Date().toLocaleString('es-CL'),centro:'C.D. Noviciado',to_email:cfg.email,asunto:'✅ Prueba EPP'})
+    .then(()=>{mostrarCfgStatus('ok','✓ Correo enviado correctamente');toast('Correo enviado','','ok');})
+    .catch(()=>mostrarCfgStatus('err','✗ Error: revisa los datos'));
+};
+
+// CONFIG
+function cargarCfgUI(){
+  document.getElementById('cfg-service').value=cfg.serviceId||'';
+  document.getElementById('cfg-template').value=cfg.templateId||'';
+  document.getElementById('cfg-pubkey').value=cfg.publicKey||'';
+  document.getElementById('cfg-email').value=cfg.email||'';
+}
+window.guardarConfig = () => {
+  cfg.serviceId=document.getElementById('cfg-service').value.trim();
+  cfg.templateId=document.getElementById('cfg-template').value.trim();
+  cfg.publicKey=document.getElementById('cfg-pubkey').value.trim();
+  cfg.email=document.getElementById('cfg-email').value.trim();
+  localStorage.setItem('epp_cfg_v1',JSON.stringify(cfg));
+  if(cfg.publicKey) emailjs.init(cfg.publicKey);
+  mostrarCfgStatus('ok','✓ Configuración guardada');
+  toast('Configuración guardada','','ok');
+};
+function mostrarCfgStatus(tipo,msg){const el=document.getElementById('cfg-status');el.style.display='inline-flex';el.className='cfg-status '+tipo;el.textContent=msg;}
+
+// CSV
+window.exportarCSV = () => {
+  const headers=['Nombre','Categoría','Norma','Stock','Mínimo','Asignados','Vencimiento','Proveedor','Observaciones','Estado'];
+  const rows=Object.values(inventario).map(i=>{const[,l]=badgeInfo(i);return[i.nombre,i.cat,i.norma||'',i.stock,i.min,i.asig||0,i.venc||'',i.prov||'',i.obs||'',l].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');});
+  const csv='\uFEFF'+[headers.join(','),...rows].join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download=`EPP_Noviciado_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+};
+
+// TOAST
+window.toast = (title,msg,type='info') => {
+  const wrap=document.getElementById('toasts');
+  const t=document.createElement('div');t.className=`toast ${type}`;
+  t.innerHTML=`<div><div class="toast-title">${title}</div>${msg?`<div class="toast-msg">${msg}</div>`:''}</div>`;
+  wrap.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity .3s';setTimeout(()=>t.remove(),300);},3500);
+};
+
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+document.getElementById('confirm-overlay').addEventListener('click',function(e){if(e.target===this)closeConfirm();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeConfirm();}});
+</script>
+</body>
+</html>

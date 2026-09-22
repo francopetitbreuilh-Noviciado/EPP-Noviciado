@@ -190,7 +190,13 @@ tbody td{padding:10px 14px;vertical-align:middle}
   <div class="panel" id="panel-log">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
       <p style="font-size:13px;color:var(--text2)">Historial de retiros registrados por operaciones.</p>
-      <button class="btn" style="color:var(--red);border-color:var(--red)" onclick="limpiarLog()">Limpiar historial</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="exportarRetiros()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar Excel
+        </button>
+        <button class="btn" style="color:var(--red);border-color:var(--red)" onclick="limpiarLog()">Limpiar historial</button>
+      </div>
     </div>
     <div class="table-card">
       <div class="table-wrap">
@@ -200,6 +206,10 @@ tbody td{padding:10px 14px;vertical-align:middle}
         </table>
         <div class="empty-state" id="log-empty" style="display:none"><p>Sin retiros registrados aún.</p></div>
         <div class="loading" id="log-loading">Cargando historial…</div>
+      </div>
+      <div class="table-footer">
+        <span id="log-footer-count"></span>
+        <span>C.D. Noviciado · Firebase tiempo real</span>
       </div>
     </div>
   </div>
@@ -221,6 +231,17 @@ tbody td{padding:10px 14px;vertical-align:middle}
       <h2 style="margin-bottom:8px">Envío manual</h2>
       <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Envía el resumen de alertas actuales en cualquier momento.</p>
       <button class="btn" onclick="enviarResumen()">Enviar resumen de alertas ahora</button>
+    </div>
+
+    <div class="settings-card" style="margin-top:16px">
+      <h2>Áreas de retiro</h2>
+      <p>Estas áreas aparecen en el desplegable de la vista Operaciones. Los cambios se aplican de inmediato.</p>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input type="text" id="nueva-area" placeholder="Nombre del área…" style="flex:1;background:var(--surface2);border:.5px solid var(--border2);border-radius:var(--radius);padding:8px 11px;font-size:13px;color:var(--text);outline:none" onkeydown="if(event.key==='Enter')agregarArea()">
+        <button class="btn btn-primary" onclick="agregarArea()">Agregar</button>
+      </div>
+      <div id="areas-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      <p id="areas-empty" style="font-size:13px;color:var(--text3);display:none">No hay áreas configuradas.</p>
     </div>
   </div>
 </div>
@@ -412,6 +433,8 @@ function renderLog() {
   const tbody=document.getElementById('log-body');
   const empty=document.getElementById('log-empty');
   const entries=Object.entries(logData).map(([k,v])=>({...v,_k:k})).sort((a,b)=>b.ts-a.ts);
+  const counter=document.getElementById('log-footer-count');
+  if(counter) counter.textContent=`${entries.length} retiro${entries.length!==1?'s':''} registrado${entries.length!==1?'s':''}`;
   if(!entries.length){tbody.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
   tbody.innerHTML=entries.map(r=>`<tr>
@@ -424,6 +447,22 @@ function renderLog() {
     <td><button class="icon-btn del" onclick="eliminarRetiro('${r._k}')" title="Eliminar registro"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button></td>
   </tr>`).join('');
 }
+window.exportarRetiros = () => {
+  const entries = Object.entries(logData).map(([k,v])=>({...v,_k:k})).sort((a,b)=>b.ts-a.ts);
+  if(!entries.length){ toast('Sin registros','No hay retiros para exportar.','warn'); return; }
+  const headers = ['Fecha y hora','EPP retirado','Cantidad','Responsable','Área','Observación'];
+  const rows = entries.map(r => [
+    r.fecha||'', r.epp||'', r.cantidad||0, r.responsable||'', r.area||'', r.obs||''
+  ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(','));
+  const csv = '﻿' + [headers.join(','), ...rows].join('
+');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download = `Retiros_EPP_Noviciado_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('Exportado','Abre el archivo .csv con Excel','ok');
+};
+
 window.eliminarRetiro = async (k) => {
   if(!confirm('¿Eliminar este registro del historial?'))return;
   await remove(ref(db,`retiros/${k}`));
@@ -520,6 +559,49 @@ window.guardarConfig = () => {
   toast('Configuración guardada','','ok');
 };
 function mostrarCfgStatus(tipo,msg){const el=document.getElementById('cfg-status');el.style.display='inline-flex';el.className='cfg-status '+tipo;el.textContent=msg;}
+
+// ÁREAS
+const AREAS_DEFAULT = ['Beiersdorf','Tesa','Diageo','Vas BDF','Vas Diageo','Pedidos Ya - turno central','Pedidos Ya - turno noche','Calidad','GDS'];
+
+const areasRef = ref(db,'areas');
+onValue(areasRef, snap => {
+  // Si no hay áreas en Firebase, cargar las por defecto
+  if (!snap.val()) {
+    AREAS_DEFAULT.forEach(a => push(ref(db,'areas'), a));
+  }
+  const areas = snap.val() || {};
+  renderAreas(areas);
+});
+
+function renderAreas(areas) {
+  const list = document.getElementById('areas-list');
+  const empty = document.getElementById('areas-empty');
+  const entries = Object.entries(areas);
+  if (!entries.length) { list.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display='none';
+  list.innerHTML = entries.map(([k,v]) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:.5px solid var(--border);border-radius:var(--radius);padding:8px 12px">
+      <span style="font-size:13px">${v}</span>
+      <button class="icon-btn del" onclick="eliminarArea('${k}')" title="Eliminar área">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+window.agregarArea = async () => {
+  const input = document.getElementById('nueva-area');
+  const nombre = input.value.trim();
+  if (!nombre) { alert('Escribe el nombre del área.'); return; }
+  await push(ref(db,'areas'), nombre);
+  input.value='';
+  toast('Área agregada', nombre, 'ok');
+};
+
+window.eliminarArea = async (k) => {
+  if (!confirm('¿Eliminar esta área?')) return;
+  await remove(ref(db,`areas/${k}`));
+  toast('Área eliminada','','info');
+};
 
 // CSV
 window.exportarCSV = () => {
